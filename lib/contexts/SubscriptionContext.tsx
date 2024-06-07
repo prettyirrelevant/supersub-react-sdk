@@ -50,9 +50,10 @@ export const SubscriptionProvider = ({ children }) => {
         const { wallets } = useWallets();
         const embeddedWallet = wallets.find((wallet) => wallet.walletClientType === 'privy');
         const { pluginClient } = await generateSuperSubSmartWallet(embeddedWallet as ConnectedWallet);
-
-        const subscriptionResult = await pluginClient?.subscribe(selectedPlan!, 0);
-        console.log(subscriptionResult, pluginClient);
+        console.log('i got here.');
+        const subscriptionResult = await pluginClient.subscribe(selectedPlan!, 0);
+        console.log('i got here too.');
+        console.log('hi', subscriptionResult, pluginClient, embeddedWallet, wallets);
         toast.success(`Subscribed to ${(productDetails.data as any)?.name ?? 'plan'} successfully`);
       } catch (error) {
         toast.error(`Failed to subscribe${error?.details ? ` with code ${JSON.parse(error?.details)?.code}` : ''}`, {
