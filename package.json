@@ -1,6 +1,6 @@
 {
   "name": "supersub-react-sdk",
-  "version": "2024.06.1",
+  "version": "2024.06.2",
   "description": "Supersub React SDK",
   "type": "module",
   "main": "dist/index.js",

@@ -1,11 +1,8 @@
 import { toast } from 'sonner';
 import Modal from 'react-modal';
-import { WalletClientSigner } from '@alchemy/aa-core';
 import React, { useState, useEffect, useCallback } from 'react';
-import { MultiOwnerModularAccount } from '@alchemy/aa-accounts';
 import { usePrivy, useLogin, useWallets, useMfaEnrollment, ConnectedWallet } from '@privy-io/react-auth';
 
-import { PluginClient } from '../contracts';
 import { generateSuperSubSmartWallet } from '../utils';
 import { IAcctContextValue, IOpenModalArgs } from './interfaces';
 import { SubscriptionModal } from '../components/SubscriptionModal';
@@ -28,9 +25,6 @@ export const SubscriptionContext = React.createContext<IAcctContextValue>({} as 
 export const SubscriptionProvider = ({ children }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeModal, setActiveModal] = useState('subscription-modal');
-  const [isSmartAccountReady, setIsSmartAccountReady] = useState(false);
-  const [smartAccount, setSmartAccount] = useState<MultiOwnerModularAccount<WalletClientSigner> | null>(null);
-  const [subscriptionPluginClient, setSubscriptionPluginClient] = useState<PluginClient | null>(null);
   const [requestData, setRequestData] = useState<IOpenModalArgs>({
     apiKey: '',
     productId: undefined,
@@ -45,7 +39,6 @@ export const SubscriptionProvider = ({ children }) => {
     requestData?.defaultPlanId ?? (productDetails?.data as any)?.plans[0].onchainReference
   );
 
-  const { wallets } = useWallets();
   const { ready, authenticated, user, logout } = usePrivy();
   const { showMfaEnrollmentModal } = useMfaEnrollment();
   const { login } = useLogin({
@@ -54,8 +47,12 @@ export const SubscriptionProvider = ({ children }) => {
     },
     onComplete: async () => {
       try {
-        const subscriptionResult = await subscriptionPluginClient?.subscribe(selectedPlan!, 0);
-        console.log(subscriptionResult);
+        const { wallets } = useWallets();
+        const embeddedWallet = wallets.find((wallet) => wallet.walletClientType === 'privy');
+        const { pluginClient } = await generateSuperSubSmartWallet(embeddedWallet as ConnectedWallet);
+
+        const subscriptionResult = await pluginClient?.subscribe(selectedPlan!, 0);
+        console.log(subscriptionResult, pluginClient);
         toast.success(`Subscribed to ${(productDetails.data as any)?.name ?? 'plan'} successfully`);
       } catch (error) {
         toast.error(`Failed to subscribe${error?.details ? ` with code ${JSON.parse(error?.details)?.code}` : ''}`, {
@@ -68,7 +65,6 @@ export const SubscriptionProvider = ({ children }) => {
   });
 
   const isMfaEnabled = (user?.mfaMethods.length ?? 0) > 0;
-  const embeddedWallet = wallets.find((wallet) => wallet.walletClientType === 'privy');
 
   const removePasskeyButton = useCallback(async () => {
     if (!document.getElementById('privy-modal-content')) return;
@@ -80,18 +76,6 @@ export const SubscriptionProvider = ({ children }) => {
       }
     });
   }, []);
-
-  const createSmartWallet = useCallback(async (privyEoa: ConnectedWallet) => {
-    const { account, pluginClient } = await generateSuperSubSmartWallet(privyEoa);
-
-    setSmartAccount(account);
-    setSubscriptionPluginClient(pluginClient);
-    setIsSmartAccountReady(true);
-  }, []);
-
-  useEffect(() => {
-    embeddedWallet?.address ? createSmartWallet(embeddedWallet) : null;
-  }, [embeddedWallet?.address, createSmartWallet]);
 
   const getProductDetails = useCallback(
     async ({ apiKey = requestData.apiKey, productId = requestData.productId }) => {
@@ -165,8 +149,6 @@ export const SubscriptionProvider = ({ children }) => {
     ready,
     isMfaEnabled,
     authenticated,
-    isSmartAccountReady,
-    smartAddress: smartAccount?.address,
     subscribeToPlan,
     selectedPlan,
     setSelectedPlan,

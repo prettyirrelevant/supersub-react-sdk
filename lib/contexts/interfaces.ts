@@ -28,8 +28,6 @@ export interface IAcctContextValue {
   ready: boolean;
   isMfaEnabled: boolean;
   authenticated: boolean;
-  isSmartAccountReady: boolean;
-  smartAddress: string | undefined;
 
   subscribeToPlan: () => void;
 
